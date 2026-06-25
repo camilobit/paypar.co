@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "paypar-front",
+  "compatibility_date": "2026-06-25",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "paypar-frontend"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
