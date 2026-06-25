@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const required = ['DATABASE_URL', 'JWT_SECRET', 'FRONTEND_URL'];
+const required = ['DATABASE_URL', 'JWT_SECRET', 'FRONTEND_URL.split(",")'];
 
 for (const variable of required) {
   if (!process.env[variable]) {
@@ -19,7 +19,7 @@ export const env = {
     secret:    process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
-  frontendUrl: process.env.FRONTEND_URL,
+  frontendUrl: process.env.FRONTEND_URL.split(","),
   logLevel:    process.env.LOG_LEVEL || 'info',
   isDev:       process.env.NODE_ENV !== 'production',
   isProd:      process.env.NODE_ENV === 'production',
