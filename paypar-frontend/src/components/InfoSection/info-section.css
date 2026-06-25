@@ -1,0 +1,6 @@
+@reference "../../styles/index.css";
+.info-section { @apply py-20 px-6 bg-slate-50; }
+.info-grid { @apply max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6; }
+.info-card { @apply bg-white rounded-2xl p-6 shadow-sm border border-slate-100; }
+.info-card h3 { @apply font-bold text-slate-900 mb-2; }
+.info-card p { @apply text-slate-500 text-sm; }

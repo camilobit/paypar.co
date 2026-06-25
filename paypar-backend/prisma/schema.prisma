@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleType {
+  CLIENT
+  OPERATOR
+  ADMIN
+}
+
+enum VehicleType {
+  CAR
+  MOTORCYCLE
+  TRUCK
+  VAN
+}
+
+enum ParkingType {
+  PRIVATE
+  BLUE_ZONE
+  MALL
+  STREET
+}
+
+enum TicketStatus {
+  ACTIVE
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  CARD
+  CASH
+  TRANSFER
+  NEQUI
+  DAVIPLATA
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        RoleType @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?   @map("password_hash")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  phone         String?
+  googleId      String?   @unique @map("google_id")
+  avatarUrl     String?   @map("avatar_url")
+  isActive      Boolean   @default(true) @map("is_active")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  roleId        String    @map("role_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  role      Role       @relation(fields: [roleId], references: [id])
+  vehicles  Vehicle[]
+  ticketsOp Ticket[]   @relation("OperatorTickets")
+  payments  Payment[]
+  auditLogs AuditLog[]
+  parkings  Parking[]  @relation("OperatorParkings")
+
+  @@index([email])
+  @@map("users")
+}
+
+model City {
+  id         String    @id @default(uuid())
+  name       String
+  department String
+  country    String    @default("Colombia")
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  parkings   Parking[]
+
+  @@map("cities")
+}
+
+model Parking {
+  id              String      @id @default(uuid())
+  name            String
+  address         String
+  cityId          String      @map("city_id")
+  type            ParkingType
+  totalSpaces     Int         @map("total_spaces")
+  availableSpaces Int         @map("available_spaces")
+  hourlyRate      Decimal     @map("hourly_rate") @db.Decimal(10, 2)
+  latitude        Decimal?    @db.Decimal(10, 8)
+  longitude       Decimal?    @db.Decimal(11, 8)
+  isActive        Boolean     @default(true) @map("is_active")
+  operatorId      String?     @map("operator_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  city     City      @relation(fields: [cityId], references: [id])
+  operator User?     @relation("OperatorParkings", fields: [operatorId], references: [id])
+  tickets  Ticket[]
+  blueZone BlueZone?
+
+  @@index([cityId])
+  @@index([operatorId])
+  @@map("parkings")
+}
+
+model BlueZone {
+  id                 String   @id @default(uuid())
+  parkingId          String   @unique @map("parking_id")
+  zoneCode           String   @unique @map("zone_code")
+  maxDurationMinutes Int      @map("max_duration_minutes")
+  enforcementStart   String   @map("enforcement_start")
+  enforcementEnd     String   @map("enforcement_end")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  parking Parking @relation(fields: [parkingId], references: [id])
+
+  @@map("blue_zones")
+}
+
+model Vehicle {
+  id           String      @id @default(uuid())
+  licensePlate String      @unique @map("license_plate")
+  type         VehicleType @default(CAR)
+  brand        String?
+  model        String?
+  color        String?
+  ownerId      String?     @map("owner_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  owner   User?    @relation(fields: [ownerId], references: [id])
+  tickets Ticket[]
+
+  @@index([licensePlate])
+  @@map("vehicles")
+}
+
+model Ticket {
+  id              String       @id @default(uuid())
+  ticketNumber    String       @unique @map("ticket_number")
+  vehicleId       String       @map("vehicle_id")
+  parkingId       String       @map("parking_id")
+  operatorId      String?      @map("operator_id")
+  entryTime       DateTime     @map("entry_time")
+  exitTime        DateTime?    @map("exit_time")
+  durationMinutes Int?         @map("duration_minutes")
+  baseAmount      Decimal?     @map("base_amount") @db.Decimal(10, 2)
+  discountAmount  Decimal      @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  finalAmount     Decimal?     @map("final_amount") @db.Decimal(10, 2)
+  status          TicketStatus @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id])
+  parking  Parking  @relation(fields: [parkingId], references: [id])
+  operator User?    @relation("OperatorTickets", fields: [operatorId], references: [id])
+  payment  Payment?
+
+  @@index([vehicleId])
+  @@index([parkingId])
+  @@index([status])
+  @@index([entryTime])
+  @@map("tickets")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  ticketId         String        @unique @map("ticket_id")
+  userId           String?       @map("user_id")
+  amount           Decimal       @db.Decimal(10, 2)
+  currency         String        @default("COP")
+  method           PaymentMethod
+  status           PaymentStatus @default(PENDING)
+  provider         String?
+  providerTxId     String?       @map("provider_tx_id")
+  providerResponse Json?         @map("provider_response")
+  paidAt           DateTime?     @map("paid_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@index([status])
+  @@map("payments")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
